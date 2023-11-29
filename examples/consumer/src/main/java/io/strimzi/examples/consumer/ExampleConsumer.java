@@ -21,6 +21,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Properties;
+import java.util.function.Function;
 
 /**
  * An example consumer implementation
@@ -83,11 +84,16 @@ public class ExampleConsumer {
         long timeoutMillis = Long.parseLong(props.getProperty(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG));
         long startTime = System.currentTimeMillis();
         int i = 0;
-        while (i < numRecords && System.currentTimeMillis() - startTime < timeoutMillis) {
+
+        Function<Integer, Boolean> mayContinue = (Integer count) -> {
+            return count < numRecords && System.currentTimeMillis() - startTime < timeoutMillis;
+        };
+
+        while (mayContinue.apply(i)) {
             try {
                 consumer.subscribe(Arrays.asList(topic));
 
-                while (System.currentTimeMillis() - startTime < timeoutMillis) {
+                while (mayContinue.apply(i)) {
                     ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(1));
                     System.out.println("Consumed records: " + records.count());
                     for (ConsumerRecord<String, String> record : records) {
